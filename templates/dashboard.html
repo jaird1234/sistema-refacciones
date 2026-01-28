@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-0">👋 Hola, {{ current_user.username }}</h2>
+        <p class="text-muted mb-0">Bienvenido al Panel de Control de ETCA.</p>
+    </div>
+    <span class="badge bg-light text-secondary border px-3 py-2">
+        <i class="bi bi-calendar-event"></i> {{ now.strftime('%d/%m/%Y') if now else 'Hoy' }}
+    </span>
+</div>
+
+{% if pendientes %}
+<div class="card border-warning mb-4 shadow-sm">
+    <div class="card-header bg-warning bg-opacity-10 border-warning fw-bold text-dark d-flex align-items-center">
+        <div class="spinner-grow spinner-grow-sm text-warning me-2" role="status"></div>
+        <span>Solicitudes de Acceso Pendientes</span>
+    </div>
+    <div class="card-body bg-white p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Usuario Solicitante</th>
+                        <th>Estado</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pendientes %}
+                    <tr>
+                        <td class="ps-4 fw-bold text-primary">{{ p.username }}</td>
+                        <td><span class="badge bg-warning text-dark">⏳ Esperando Aprobación</span></td>
+                        <td class="text-end pe-4">
+                            <a href="{{ url_for('aprobar_usuario', id=p.id) }}" class="btn btn-success btn-sm me-1 shadow-sm" title="Permitir acceso">
+                                <i class="bi bi-check-lg"></i> Aprobar
+                            </a>
+                            <a href="{{ url_for('rechazar_usuario', id=p.id) }}" class="btn btn-outline-danger btn-sm shadow-sm" title="Denegar y borrar" onclick="return confirm('¿Seguro que deseas rechazar y eliminar a este usuario?')">
+                                <i class="bi bi-x-lg"></i> Rechazar
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card border-0 shadow-sm h-100 position-relative overflow-hidden">
+            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #004aad;"></div>
+            
+            <div class="card-body d-flex align-items-center p-4">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3 text-primary">
+                    <i class="bi bi-box-seam-fill fs-2"></i>
+                </div>
+                <div>
+                    <h6 class="text-uppercase text-muted small fw-bold mb-1">Catálogo Total</h6>
+                    <h2 class="fw-bold mb-0 text-dark">{{ total }}</h2>
+                    <small class="text-secondary">Productos registrados</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h6 class="text-uppercase text-muted small fw-bold mb-3">⚡ Accesos Rápidos</h6>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('nueva_venta') }}" class="btn btn-success flex-grow-1 fw-bold shadow-sm py-2">
+                        <i class="bi bi-cart-plus fs-5 d-block mb-1"></i> Vender
+                    </a>
+                    <a href="{{ url_for('inventario') }}" class="btn btn-primary flex-grow-1 fw-bold shadow-sm py-2" style="background-color: #004aad;">
+                        <i class="bi bi-search fs-5 d-block mb-1"></i> Buscar
+                    </a>
+                    <a href="{{ url_for('historial_ventas') }}" class="btn btn-light border flex-grow-1 fw-bold shadow-sm py-2 text-secondary">
+                        <i class="bi bi-clock-history fs-5 d-block mb-1"></i> Historial
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold m-0 text-dark">
+                        <i class="bi bi-graph-up-arrow text-success me-2"></i> Rendimiento Mensual
+                    </h5>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success">
+                        Mes Actual
+                    </span>
+                </div>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center py-4">
+                
+                <div style="width: 100%; max-width: 400px; height: 250px; position: relative;">
+                    <canvas id="velocimetro"></canvas>
+                    
+                    <div style="position: absolute; top: 60%; left: 0; right: 0; text-align: center;">
+                        <h6 class="text-muted mb-0">Ventas Acumuladas</h6>
+                        <h1 class="fw-bold text-dark display-6">${{ "{:,.0f}".format(ventas_mes) }}</h1>
+                        <small class="text-muted">Meta: $100,000</small>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold m-0 text-dark">
+                        <i class="bi bi-trophy-fill text-warning me-2"></i> Más Vendidos
+                    </h5>
+                    <small class="text-muted" style="font-size: 0.8rem;">
+                        Normalizado (Juegos/Pares)
+                    </small>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for item in ranking_top %}
+                    <li class="list-group-item px-4 py-3 border-0">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div style="max-width: 70%;">
+                                <span class="fw-bold text-dark d-block text-truncate">{{ item.producto.codigo }}</span>
+                                <small class="text-muted text-truncate d-block">
+                                    {{ item.producto.descripcion }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <span class="h5 fw-bold mb-0 d-block text-primary">{{ "{:,.1f}".format(item.cantidad_ranking) }}</span>
+                                <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;">
+                                    {{ item.tipo }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {% set porcentaje = (item.cantidad_ranking / ranking_top[0].cantidad_ranking) * 100 %}
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div class="progress-bar rounded-pill" role="progressbar" 
+                                 style="width: {{ porcentaje }}%; background-color: #004aad;" 
+                                 aria-valuenow="{{ porcentaje }}" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center py-5 text-muted">
+                        <i class="bi bi-bar-chart fs-1 d-block mb-3 opacity-50"></i>
+                        <p class="mb-0">Aún no hay suficientes datos de ventas para generar el ranking.</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="card-footer bg-white border-0 text-center pb-3">
+                <a href="{{ url_for('historial_ventas') }}" class="text-decoration-none small fw-bold">Ver reporte detallado &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const ctx = document.getElementById('velocimetro').getContext('2d');
+        
+        // Datos que vienen de Flask
+        const ventasActuales = {{ ventas_mes }};
+        const metaMensual = 100000; // Puedes ajustar tu meta aquí
+        const restante = Math.max(0, metaMensual - ventasActuales);
+
+        // Color dinámico: Verde si llegamos a la meta, Naranja si falta
+        let colorProgreso = ventasActuales >= metaMensual ? '#198754' : '#ffc107';
+        let visualRestante = ventasActuales >= metaMensual ? 0 : restante;
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Vendido', 'Por Vender'],
+                datasets: [{
+                    data: [ventasActuales, visualRestante],
+                    backgroundColor: [
+                        colorProgreso,  // Color ventas
+                        '#e9ecef'       // Color fondo gris
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4,
+                    cutout: '85%',      // Grosor del anillo
+                    circumference: 180, // Semicírculo
+                    rotation: 270       // Girar
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+    });
+</script>
+
+{% endblock %}

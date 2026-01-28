@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nota de Remisión {{ venta.id }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 0; padding: 20px; color: #000; }
+        
+        /* Contenedor tipo Carta */
+        .hoja {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Encabezado */
+        .header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #004aad; padding-bottom: 10px; }
+        .logo { width: 150px; margin-right: 20px; }
+        .logo img { width: 100%; }
+        
+        .info-empresa { flex-grow: 1; text-align: center; }
+        .info-empresa h1 { color: #004aad; font-size: 28px; margin: 0; letter-spacing: 2px; font-weight: 900; }
+        .info-empresa h3 { margin: 5px 0; font-size: 14px; font-weight: bold; }
+        .info-empresa p { margin: 2px 0; font-size: 10px; color: #555; }
+
+        .datos-nota { text-align: right; margin-top: 10px; font-size: 14px; }
+        .datos-nota strong { color: #d00; font-size: 16px; }
+
+        /* Información del Cliente */
+        .cliente-section { margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f9f9f9; }
+        
+        /* Tabla */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: #004aad; color: white; padding: 8px; text-align: left; font-size: 11px; text-transform: uppercase; }
+        td { border-bottom: 1px solid #ddd; padding: 8px; font-size: 11px; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* Totales */
+        .totales { margin-top: 20px; text-align: right; }
+        .totales table { width: 300px; margin-left: auto; }
+        .totales td { border: none; padding: 5px; font-size: 14px; }
+        .total-final { font-weight: bold; font-size: 16px; color: #004aad; }
+
+        /* Firma */
+        .firma { margin-top: 80px; text-align: center; }
+        .linea-firma { width: 250px; border-top: 1px solid #000; margin: 0 auto; padding-top: 5px; }
+
+        /* Botón de Imprimir (Solo visible en pantalla) */
+        .no-print { text-align: center; margin-bottom: 20px; }
+        .btn-print { background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; }
+        
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <button onclick="window.print()" class="btn-print">🖨️ IMPRIMIR / GUARDAR PDF</button>
+        <button onclick="window.close()" style="background:#6c757d; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Cerrar</button>
+    </div>
+
+    <div class="hoja">
+        <div class="header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="ETCA Logo">
+            </div>
+            <div class="info-empresa">
+                <h1>ETCA</h1>
+                <h3>ESPECIALISTAS EN TRATAMIENTO Y CALENTAMIENTO DE AGUA</h3>
+                <p><strong>LETICIA GALINDO ROMERO</strong></p>
+                <p>CALLE MORELOS # 19, COL. TEOTIHUACAN DE ARISTA</p>
+                <p>TEOTIHUACAN, ESTADO DE MÉXICO, C.P. 55800</p>
+                <p>TEL. 55.32.64.82.64 | CORREO: egr.ventas.83@gmail.com</p>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <strong>Cliente:</strong> {{ venta.cliente.nombre }} <br>
+                <small>{{ venta.cliente.direccion or 'Dirección no registrada' }}</small>
+            </div>
+            <div class="datos-nota">
+                Fecha: {{ venta.fecha.strftime('%d/%m/%Y') }} <br>
+                <strong>NOTA DE REMISIÓN N° {{ "%04d" | format(venta.id) }}</strong>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="text-center" width="10%">CANTIDAD</th>
+                    <th class="text-center" width="10%">UNIDAD</th>
+                    <th width="50%">DESCRIPCIÓN</th>
+                    <th class="text-right" width="15%">P. UNITARIO</th>
+                    <th class="text-right" width="15%">IMPORTE</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in venta.detalles %}
+                <tr>
+                    <td class="text-center">{{ detalle.cantidad }}</td>
+                    <td class="text-center">PZA</td> <td>{{ detalle.producto.descripcion }}</td>
+                    <td class="text-right">${{ "{:,.2f}".format(detalle.precio_unitario) }}</td>
+                    <td class="text-right">${{ "{:,.2f}".format(detalle.cantidad * detalle.precio_unitario) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totales">
+            <table>
+                <tr>
+                    <td>SUBTOTAL:</td>
+                    <td class="text-right">${{ "{:,.2f}".format(venta.total) }}</td>
+                </tr>
+                <tr>
+                    <td class="total-final">TOTAL:</td>
+                    <td class="total-final text-right">${{ "{:,.2f}".format(venta.total) }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="firma">
+            <div class="linea-firma">
+                NOMBRE Y FIRMA DE RECIBIDO
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

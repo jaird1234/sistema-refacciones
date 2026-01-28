@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registro de Usuario</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <style>
+        body { 
+            /* Fondo Degradado Azul ETCA */
+            background: linear-gradient(135deg, #004aad 0%, #001f3f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .card-registro {
+            width: 100%;
+            max-width: 450px;
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+        .registro-header {
+            background: white;
+            padding: 30px 20px 10px 20px;
+            text-align: center;
+        }
+        .logo-img {
+            max-width: 120px;
+            height: auto;
+        }
+        .btn-success-etca {
+            background-color: #198754;
+            color: white;
+            font-weight: bold;
+            padding: 12px;
+            border: none;
+            transition: all 0.3s;
+        }
+        .btn-success-etca:hover {
+            background-color: #146c43;
+            transform: translateY(-2px);
+        }
+        .form-control {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 12px;
+        }
+        .form-control:focus {
+            border-color: #198754;
+            box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card card-registro">
+        
+        <div class="registro-header">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo ETCA" class="logo-img mb-2">
+            <h4 class="fw-bold text-dark">Solicitud de Acceso</h4>
+            <p class="text-muted small">Crea una cuenta para que un Administrador la apruebe.</p>
+        </div>
+
+        <div class="card-body p-4 bg-white">
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} text-center py-2 mb-3">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary small">NOMBRE DE USUARIO</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-person-plus"></i></span>
+                        <input type="text" name="username" class="form-control" placeholder="Ej. vendedor1" required>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-secondary small">CONTRASEÑA</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-key"></i></span>
+                        <input type="password" name="password" class="form-control" placeholder="Crea una contraseña segura" required>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success-etca rounded-3">
+                        ENVIAR SOLICITUD
+                    </button>
+                    <a href="{{ url_for('login') }}" class="btn btn-light text-muted border-0 mt-2">
+                        <i class="bi bi-arrow-left"></i> Cancelar y Volver
+                    </a>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+</body>
+</html>

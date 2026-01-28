@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card p-4 shadow-sm border-0">
+            <h4 class="mb-3 text-primary"><i class="bi bi-person-plus"></i> Nuevo Cliente</h4>
+            <form method="POST">
+                <input type="text" name="nombre" class="form-control mb-3" placeholder="Nombre / Empresa" required>
+                <input type="text" name="telefono" class="form-control mb-3" placeholder="Teléfono">
+                <input type="email" name="email" class="form-control mb-3" placeholder="Email">
+                <textarea name="direccion" class="form-control mb-3" placeholder="Dirección Completa" rows="3"></textarea>
+                <button type="submit" class="btn btn-primary w-100">Guardar Cliente</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow border-0">
+            <div class="card-body">
+                <h4 class="mb-3">Directorio de Clientes</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light"><tr><th>Nombre</th><th>Contacto</th><th>Acciones</th></tr></thead>
+                        <tbody>
+                            {% for c in clientes %}
+                            <tr>
+                                <td class="fw-bold">{{ c.nombre }}</td>
+                                <td>
+                                    <small class="d-block"><i class="bi bi-telephone"></i> {{ c.telefono }}</small>
+                                    <small class="text-muted">{{ c.direccion }}</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary border-0" data-bs-toggle="modal" data-bs-target="#edit{{c.id}}">
+                                        <i class="bi bi-pencil-square fs-5"></i>
+                                    </button>
+                                    
+                                    {% if c.id != 1 %} <button onclick="confirmarBorrar({{c.id}})" class="btn btn-sm btn-outline-danger border-0">
+                                        <i class="bi bi-trash fs-5"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <div class="modal fade" id="edit{{c.id}}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form action="{{ url_for('editar_cliente', id=c.id) }}" method="POST">
+                                            <div class="modal-header"><h5 class="modal-title">Editar Cliente</h5></div>
+                                            <div class="modal-body">
+                                                <label>Nombre</label><input type="text" name="nombre" class="form-control mb-2" value="{{ c.nombre }}">
+                                                <label>Teléfono</label><input type="text" name="telefono" class="form-control mb-2" value="{{ c.telefono }}">
+                                                <label>Email</label><input type="text" name="email" class="form-control mb-2" value="{{ c.email }}">
+                                                <label>Dirección</label><textarea name="direccion" class="form-control">{{ c.direccion }}</textarea>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function confirmarBorrar(id) {
+        Swal.fire({
+            title: '¿Eliminar cliente?',
+            text: "Sus ventas pasarán a 'Público General'.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Sí, borrar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = "/borrar_cliente/" + id;
+            }
+        })
+    }
+</script>
+{% endblock %}

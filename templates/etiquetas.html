@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    /* Diseño de la etiqueta en pantalla (Preview) */
+    .etiqueta-preview {
+        border: 2px dashed #333;
+        background: white;
+        padding: 20px;
+        max-width: 600px; /* Ancho simulado */
+        margin: 0 auto;
+        font-family: Arial, sans-serif;
+    }
+
+    /* ESTILOS QUE SOLO SE ACTIVAN AL IMPRIMIR */
+    @media print {
+        body * {
+            visibility: hidden; /* Oculta todo el sistema */
+        }
+        #areaImpresion, #areaImpresion * {
+            visibility: visible; /* Muestra solo la etiqueta */
+        }
+        #areaImpresion {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            border: none; /* Quita el borde punteado al imprimir */
+        }
+        /* Ocultar botones y sidebar */
+        .no-print { display: none !important; }
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
+    <h2>🏷️ Generador de Etiquetas de Envío</h2>
+    <button onclick="window.print()" class="btn btn-primary btn-lg">
+        <i class="bi bi-printer-fill"></i> Imprimir Etiqueta
+    </button>
+</div>
+
+<div class="row no-print mb-4">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body bg-light">
+                <label class="form-label fw-bold">Seleccionar Cliente (Destinatario):</label>
+                <select id="selectCliente" class="form-select select2">
+                    <option value="">Buscar cliente...</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.id }}" 
+                            data-nombre="{{ c.nombre }}"
+                            data-direccion="{{ c.direccion }}"
+                            data-telefono="{{ c.telefono }}"
+                            data-ciudad="{{ c.ciudad }}">
+                        {{ c.nombre }} - {{ c.telefono }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Selecciona un cliente y la etiqueta se llenará automáticamente.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="areaImpresion">
+    <div class="etiqueta-preview shadow">
+        
+        <div class="mb-4 pb-3 border-bottom">
+            <small class="text-muted fw-bold text-uppercase">REMITENTE / FROM:</small>
+            <div class="d-flex align-items-center mt-2">
+                <div>
+                    <h5 class="mb-0 fw-bold">Eloin Galindo Romero</h5>
+                    <p class="mb-0 small">AV Constitución Número 45</p>
+                    <p class="mb-0 small">Col. San Miguel Xometla, C.P. 55895</p>
+                    <p class="mb-0 small">Estado de México, México</p>
+                    <p class="mb-0 small fw-bold">Tel: 55 3264 8264</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="py-2">
+            <small class="text-muted fw-bold text-uppercase">DESTINATARIO / TO:</small>
+            <div class="ms-4 mt-2">
+                <h2 class="fw-bold mb-1" id="lblNombre">NOMBRE DEL CLIENTE</h2>
+                <p class="fs-5 mb-0" id="lblDireccion">Dirección Completa</p>
+                <p class="fs-5 mb-0" id="lblCiudad">Ciudad / Estado</p>
+                <br>
+                <p class="fs-5 fw-bold mb-0">Tel: <span id="lblTelefono">00 0000 0000</span></p>
+            </div>
+        </div>
+
+        <div class="mt-5 pt-3 border-top text-center">
+            <p class="small text-muted mb-0">Manejar con cuidado / Fragil</p>
+            <div style="height: 30px; background: repeating-linear-gradient(90deg, #000 0, #000 2px, #fff 2px, #fff 4px); width: 60%; margin: 10px auto;"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Inicializar buscador inteligente Select2
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+
+        // Cuando cambie la selección del cliente...
+        $('#selectCliente').on('change', function() {
+            // Obtenemos la opción seleccionada
+            var selected = $(this).find('option:selected');
+            
+            // Si no hay selección, ponemos textos por defecto
+            if ($(this).val() === "") {
+                $('#lblNombre').text("NOMBRE DEL CLIENTE");
+                $('#lblDireccion').text("Dirección Completa");
+                $('#lblCiudad').text("Ciudad / Estado");
+                $('#lblTelefono').text("00 0000 0000");
+                return;
+            }
+
+            // Extraemos los datos guardados en data-nombre, data-direccion, etc.
+            var nombre = selected.data('nombre');
+            var direccion = selected.data('direccion');
+            var telefono = selected.data('telefono');
+            var ciudad = selected.data('ciudad'); // Asegúrate de tener este campo en tu BD
+
+            // Inyectamos los datos en la etiqueta HTML
+            $('#lblNombre').text(nombre);
+            $('#lblDireccion').text(direccion);
+            $('#lblCiudad').text(ciudad ? ciudad : ""); // Si no hay ciudad, poner vacío
+            $('#lblTelefono').text(telefono);
+        });
+    });
+</script>
+
+{% endblock %}

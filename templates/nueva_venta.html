@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-5">
+        <div class="card p-4 shadow-sm border-0">
+            <h4 class="mb-3 text-primary"><i class="bi bi-cart-plus"></i> Registrar Venta</h4>
+            
+            <div class="mb-3">
+                <label class="fw-bold">Cliente</label>
+                <select id="cliente" class="form-select buscador-select" style="width: 100%;">
+                    {% for c in clientes %}
+                    <option value="{{ c.id }}" data-direccion="{{ c.direccion }}">
+                        {{ c.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="mt-1 text-end">
+                    <a href="{{ url_for('clientes') }}" class="text-decoration-none small">
+                        + Nuevo Cliente
+                    </a>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="fw-bold">Entrega</label>
+                <select id="tipo_entrega" class="form-select bg-light">
+                    <option value="Presencial">🏪 Entrega Presencial</option>
+                    <option value="Paqueteria">🚚 Envío por Paquetería</option>
+                </select>
+            </div>
+
+            <div class="mb-3 d-none" id="div_direccion">
+                <label>Dirección</label>
+                <textarea id="direccion_envio" class="form-control" rows="2"></textarea>
+                <a href="#" onclick="copiarDir(); return false;" class="small">Usar dirección del cliente</a>
+            </div>
+
+            <hr>
+
+            <div class="mb-3">
+                <label class="fw-bold text-success">Buscar Producto</label>
+                <select id="producto_select" class="form-select buscador-select" style="width: 100%;">
+                    <option value="" selected disabled>Escribe para buscar...</option>
+                    {% for p in productos %}
+                    <option value="{{ p.id }}" 
+                            data-codigo="{{ p.codigo }}"
+                            data-desc="{{ p.descripcion }}"
+                            data-precio="{{ p.precio_mxn }}"
+                            data-stock="{{ p.cantidad_actual }}">
+                        {{ p.codigo }} - {{ p.descripcion }} | Stock: {{ p.cantidad_actual }} | ${{ p.precio_mxn }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col-4">
+                    <label>Cantidad</label>
+                    <input type="number" id="cantidad" class="form-control text-center fw-bold" value="1" min="1">
+                </div>
+                <div class="col-8 d-flex align-items-end">
+                    <button onclick="agregar()" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> AGREGAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card p-4 shadow border-0 h-100">
+            <div class="d-flex justify-content-between">
+                <h4>Ticket</h4>
+                <button onclick="limpiar()" class="btn btn-sm btn-outline-secondary">Limpiar</button>
+            </div>
+            
+            <div class="table-responsive my-3 border rounded" style="height: 400px; overflow-y: auto;">
+                <table class="table table-striped align-middle mb-0">
+                    <thead class="sticky-top bg-white">
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Cant</th>
+                            <th>Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-carrito"></tbody>
+                </table>
+            </div>
+
+            <div class="mt-auto pt-3 border-top">
+                <div class="d-flex justify-content-between">
+                    <h3>Total:</h3>
+                    <h2 class="text-success fw-bold" id="total-texto">$0.00</h2>
+                </div>
+                
+                <div class="d-grid gap-2 mt-3">
+                    <button onclick="registrarVenta()" class="btn btn-success btn-lg shadow">
+                        ✅ COBRAR Y REGISTRAR
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. INICIAR BUSCADOR (SELECT2)
+    $(document).ready(function() {
+        $('.buscador-select').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Selecciona una opción',
+            language: { noResults: () => "No encontrado" }
+        });
+
+        $('#tipo_entrega').change(function(){
+            if($(this).val() === 'Paqueteria') {
+                $('#div_direccion').removeClass('d-none');
+            } else {
+                $('#div_direccion').addClass('d-none');
+            }
+        });
+    });
+
+    let carrito = [];
+
+    function copiarDir() {
+        let dir = $('#cliente').find(':selected').data('direccion');
+        if(dir && dir !== 'None') $('#direccion_envio').val(dir);
+        else Swal.fire('Info', 'El cliente no tiene dirección guardada.', 'info');
+    }
+
+    function agregar() {
+        let idProducto = $('#producto_select').val();
+        if (!idProducto) { Swal.fire('Error', 'Selecciona un producto primero', 'warning'); return; }
+
+        let opcion = $('#producto_select').find(':selected');
+        let codigo = opcion.data('codigo');
+        let desc = opcion.data('desc');
+        let precio = parseFloat(opcion.data('precio'));
+        let stock = parseInt(opcion.data('stock'));
+        let cantidad = parseInt($('#cantidad').val());
+
+        if (cantidad < 1) return;
+
+        let itemExistente = carrito.find(i => i.id == idProducto);
+        let cantidadActual = itemExistente ? itemExistente.cantidad : 0;
+
+        if ((cantidadActual + cantidad) > stock) {
+            Swal.fire('Sin Stock', `Solo quedan ${stock} piezas disponibles.`, 'error');
+            return;
+        }
+
+        if (itemExistente) {
+            itemExistente.cantidad += cantidad;
+            itemExistente.subtotal = itemExistente.cantidad * precio;
+        } else {
+            carrito.push({
+                id: idProducto,
+                nombre: `${codigo} - ${desc}`,
+                cantidad: cantidad,
+                precio: precio,
+                subtotal: cantidad * precio
+            });
+        }
+
+        actualizarTabla();
+        $('#producto_select').val(null).trigger('change');
+        $('#cantidad').val(1);
+    }
+
+    function borrar(index) {
+        carrito.splice(index, 1);
+        actualizarTabla();
+    }
+
+    function limpiar() {
+        carrito = [];
+        actualizarTabla();
+    }
+
+    function actualizarTabla() {
+        let tbody = $('#tabla-carrito');
+        tbody.empty();
+        let total = 0;
+
+        carrito.forEach((item, index) => {
+            total += item.subtotal;
+            tbody.append(`
+                <tr>
+                    <td><small>${item.nombre}</small></td>
+                    <td>${item.cantidad}</td>
+                    <td>$${item.subtotal.toFixed(2)}</td>
+                    <td>
+                        <button onclick="borrar(${index})" class="btn btn-sm btn-outline-danger border-0">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+
+        let totalFormato = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(total);
+        $('#total-texto').text(totalFormato);
+        $('#total-texto').data('valor', total);
+    }
+
+function registrarVenta() {
+        if (carrito.length === 0) {
+            Swal.fire('Carrito Vacío', 'Agrega productos.', 'warning');
+            return;
+        }
+
+        let total = $('#total-texto').data('valor');
+        let datos = {
+            cliente_id: $('#cliente').val(),
+            tipo_entrega: $('#tipo_entrega').val(),
+            direccion_envio: $('#direccion_envio').val(),
+            total: total,
+            productos: carrito
+        };
+
+        Swal.fire({
+            title: '¿Confirmar Venta?',
+            text: `Total a cobrar: $${total.toFixed(2)}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            confirmButtonText: 'Sí, Registrar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar cargando...
+                Swal.showLoading();
+
+                $.ajax({
+                    url: '/nueva-venta',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(datos),
+                    success: function(response) {
+                        let ventaId = response.venta_id;
+                        
+                        // AQUÍ ESTÁ EL CAMBIO: Preguntamos qué hacer DESPUÉS de guardar
+                        Swal.fire({
+                            title: '¡Venta Guardada!',
+                            text: '¿Deseas imprimir la nota de remisión?',
+                            icon: 'success',
+                            showCancelButton: true,
+                            confirmButtonColor: '#0d6efd', // Azul
+                            cancelButtonColor: '#6c757d', // Gris
+                            confirmButtonText: '🖨️ Imprimir Nota',
+                            cancelButtonText: 'Nueva Venta'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // Abrimos la nota
+                                window.open("/nota_remision/" + ventaId, "_blank");
+                                window.location.reload(); // Limpiamos pantalla
+                            } else {
+                                window.location.reload(); // Solo limpiamos
+                            }
+                        });
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'No se pudo guardar la venta', 'error');
+                    }
+                });
+            }
+        });
+    }
+</script>
+{% endblock %}
