@@ -1,270 +1,348 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="row">
-    <div class="col-md-5">
-        <div class="card p-4 shadow-sm border-0">
-            <h4 class="mb-3 text-primary"><i class="bi bi-cart-plus"></i> Registrar Venta</h4>
-            
-            <div class="mb-3">
-                <label class="fw-bold">Cliente</label>
-                <select id="cliente" class="form-select buscador-select" style="width: 100%;">
-                    {% for c in clientes %}
-                    <option value="{{ c.id }}" data-direccion="{{ c.direccion }}">
-                        {{ c.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
-                <div class="mt-1 text-end">
-                    <a href="{{ url_for('clientes') }}" class="text-decoration-none small">
-                        + Nuevo Cliente
-                    </a>
+<div class="container-fluid p-3">
+    <div class="row h-100">
+        
+        <div class="col-md-7 d-flex flex-column">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-box-seam"></i> Catálogo de Productos</h5>
                 </div>
-            </div>
+                
+                <div class="card-body d-flex flex-column p-2">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" id="buscador" class="form-control border-start-0 ps-0" 
+                               placeholder="Escribe código o nombre para buscar..." 
+                               onkeyup="filtrarProductos()" autocomplete="off">
+                    </div>
 
-            <div class="mb-3">
-                <label class="fw-bold">Entrega</label>
-                <select id="tipo_entrega" class="form-select bg-light">
-                    <option value="Presencial">🏪 Entrega Presencial</option>
-                    <option value="Paqueteria">🚚 Envío por Paquetería</option>
-                </select>
-            </div>
-
-            <div class="mb-3 d-none" id="div_direccion">
-                <label>Dirección</label>
-                <textarea id="direccion_envio" class="form-control" rows="2"></textarea>
-                <a href="#" onclick="copiarDir(); return false;" class="small">Usar dirección del cliente</a>
-            </div>
-
-            <hr>
-
-            <div class="mb-3">
-                <label class="fw-bold text-success">Buscar Producto</label>
-                <select id="producto_select" class="form-select buscador-select" style="width: 100%;">
-                    <option value="" selected disabled>Escribe para buscar...</option>
-                    {% for p in productos %}
-                    <option value="{{ p.id }}" 
-                            data-codigo="{{ p.codigo }}"
-                            data-desc="{{ p.descripcion }}"
-                            data-precio="{{ p.precio_mxn }}"
-                            data-stock="{{ p.cantidad_actual }}">
-                        {{ p.codigo }} - {{ p.descripcion }} | Stock: {{ p.cantidad_actual }} | ${{ p.precio_mxn }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="row">
-                <div class="col-4">
-                    <label>Cantidad</label>
-                    <input type="number" id="cantidad" class="form-control text-center fw-bold" value="1" min="1">
-                </div>
-                <div class="col-8 d-flex align-items-end">
-                    <button onclick="agregar()" class="btn btn-primary w-100">
-                        <i class="bi bi-plus-circle"></i> AGREGAR
-                    </button>
+                    <div class="table-responsive flex-grow-1" style="max-height: 550px; overflow-y: auto;">
+                        <table class="table table-hover align-middle table-sm" id="tablaProductos">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 20%">Código</th>
+                                    <th style="width: 45%">Descripción</th>
+                                    <th style="width: 15%" class="text-center">Stock</th>
+                                    <th style="width: 20%" class="text-end">Precio</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in productos %}
+                                <tr>
+                                    <td class="fw-bold text-primary small">{{ p.codigo }}</td>
+                                    <td class="small text-truncate" style="max-width: 200px;" title="{{ p.descripcion }}">
+                                        {{ p.descripcion }}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if p.cantidad_actual > 0 %}
+                                            <span class="badge bg-success rounded-pill">{{ p.cantidad_actual }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger rounded-pill">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end fw-bold text-dark">
+                                        ${{ "{:,.2f}".format(p.precio_mxn or 0) }}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if p.cantidad_actual > 0 %}
+                                        <button class="btn btn-sm btn-outline-primary py-0" 
+                                                onclick="agregarDirecto({{ p.id }}, '{{ p.codigo }}', '{{ p.descripcion }}', {{ p.precio_mxn or 0 }}, {{ p.cantidad_actual }})">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary py-0" disabled>-</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <div id="no-results" class="text-center mt-4 d-none">
+                            <p class="text-muted">No se encontraron productos.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-7">
-        <div class="card p-4 shadow border-0 h-100">
-            <div class="d-flex justify-content-between">
-                <h4>Ticket</h4>
-                <button onclick="limpiar()" class="btn btn-sm btn-outline-secondary">Limpiar</button>
-            </div>
-            
-            <div class="table-responsive my-3 border rounded" style="height: 400px; overflow-y: auto;">
-                <table class="table table-striped align-middle mb-0">
-                    <thead class="sticky-top bg-white">
-                        <tr>
-                            <th>Descripción</th>
-                            <th>Cant</th>
-                            <th>Subtotal</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-carrito"></tbody>
-                </table>
-            </div>
-
-            <div class="mt-auto pt-3 border-top">
-                <div class="d-flex justify-content-between">
-                    <h3>Total:</h3>
-                    <h2 class="text-success fw-bold" id="total-texto">$0.00</h2>
-                </div>
-                
-                <div class="d-grid gap-2 mt-3">
-                    <button onclick="registrarVenta()" class="btn btn-success btn-lg shadow">
-                        ✅ COBRAR Y REGISTRAR
+        <div class="col-md-5">
+            <div class="card shadow border-0 h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between">
+                    <h5 class="mb-0"><i class="bi bi-cart4"></i> Venta Actual</h5>
+                    <button onclick="limpiar()" class="btn btn-sm btn-outline-light border-0" title="Vaciar Carrito">
+                        <i class="bi bi-trash"></i>
                     </button>
                 </div>
+                
+                <div class="card-body d-flex flex-column p-0">
+                    
+                    <div class="table-responsive flex-grow-1 p-2" style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Desc.</th>
+                                    <th class="text-center">Cant.</th>
+                                    <th>Precio</th>
+                                    <th class="text-end">Total</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-carrito">
+                                </tbody>
+                        </table>
+                    </div>
 
+                    <div class="bg-light p-3 border-top mt-auto">
+                        
+                        <div class="mb-2">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+                                <select id="cliente" class="form-select">
+                                    {% for c in clientes %}
+                                        <option value="{{ c.id }}" data-direccion="{{ c.direccion }}">{{ c.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <select id="tipo_entrega" class="form-select form-select-sm">
+                                    <option value="Presencial">🏪 Mostrador</option>
+                                    <option value="Paqueteria">🚚 Envío</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <select id="metodo_pago" class="form-select form-select-sm border-success fw-bold text-success">
+                                    <option value="Efectivo">💵 Efectivo</option>
+                                    <option value="Tarjeta">💳 Tarjeta</option>
+                                    <option value="Transferencia">🏦 Transf.</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-2 d-none" id="div_direccion">
+                            <textarea id="direccion_envio" class="form-control form-control-sm" rows="1" placeholder="Dirección de envío..."></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="h5 text-muted mb-0">Total:</span>
+                            <span class="h2 text-success fw-bold mb-0" id="total-texto">$0.00</span>
+                        </div>
+
+                        <button onclick="registrarVenta()" class="btn btn-success w-100 py-2 fw-bold shadow">
+                            <i class="bi bi-check-lg"></i> TERMINAR VENTA
+                        </button>
+                    </div>
+
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // 1. INICIAR BUSCADOR (SELECT2)
-    $(document).ready(function() {
-        $('.buscador-select').select2({
-            theme: 'bootstrap-5',
-            placeholder: 'Selecciona una opción',
-            language: { noResults: () => "No encontrado" }
-        });
-
-        $('#tipo_entrega').change(function(){
-            if($(this).val() === 'Paqueteria') {
-                $('#div_direccion').removeClass('d-none');
-            } else {
-                $('#div_direccion').addClass('d-none');
-            }
-        });
-    });
-
     let carrito = [];
 
-    function copiarDir() {
-        let dir = $('#cliente').find(':selected').data('direccion');
-        if(dir && dir !== 'None') $('#direccion_envio').val(dir);
-        else Swal.fire('Info', 'El cliente no tiene dirección guardada.', 'info');
+    // --- 1. FILTRADO RÁPIDO DE LA TABLA ---
+    function filtrarProductos() {
+        let input = document.getElementById("buscador").value.toUpperCase();
+        let table = document.getElementById("tablaProductos");
+        let tr = table.getElementsByTagName("tr");
+        let hayResultados = false;
+
+        // Comenzamos desde 1 para saltar el encabezado
+        for (let i = 1; i < tr.length; i++) {
+            let tdCodigo = tr[i].getElementsByTagName("td")[0];
+            let tdDesc = tr[i].getElementsByTagName("td")[1];
+            
+            if (tdCodigo && tdDesc) {
+                let txtCodigo = tdCodigo.textContent || tdCodigo.innerText;
+                let txtDesc = tdDesc.textContent || tdDesc.innerText;
+                
+                // Buscamos coincidencia
+                if (txtCodigo.toUpperCase().indexOf(input) > -1 || txtDesc.toUpperCase().indexOf(input) > -1) {
+                    tr[i].style.display = "";
+                    hayResultados = true;
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+        
+        // Mostrar mensaje si no hay nada
+        document.getElementById('no-results').classList.toggle('d-none', hayResultados);
     }
 
-    function agregar() {
-        let idProducto = $('#producto_select').val();
-        if (!idProducto) { Swal.fire('Error', 'Selecciona un producto primero', 'warning'); return; }
+    // --- 2. AGREGAR AL CARRITO DESDE LA TABLA ---
+    function agregarDirecto(id, codigo, descripcion, precio, stockMax) {
+        let existente = carrito.find(i => i.id === id);
 
-        let opcion = $('#producto_select').find(':selected');
-        let codigo = opcion.data('codigo');
-        let desc = opcion.data('desc');
-        let precio = parseFloat(opcion.data('precio'));
-        let stock = parseInt(opcion.data('stock'));
-        let cantidad = parseInt($('#cantidad').val());
-
-        if (cantidad < 1) return;
-
-        let itemExistente = carrito.find(i => i.id == idProducto);
-        let cantidadActual = itemExistente ? itemExistente.cantidad : 0;
-
-        if ((cantidadActual + cantidad) > stock) {
-            Swal.fire('Sin Stock', `Solo quedan ${stock} piezas disponibles.`, 'error');
-            return;
-        }
-
-        if (itemExistente) {
-            itemExistente.cantidad += cantidad;
-            itemExistente.subtotal = itemExistente.cantidad * precio;
+        if (existente) {
+            if (existente.cantidad < stockMax) {
+                existente.cantidad++;
+                existente.subtotal = existente.cantidad * existente.precio;
+            } else {
+                Swal.fire({toast: true, position: 'top-end', icon: 'warning', title: 'Stock máximo alcanzado', timer: 1500, showConfirmButton: false});
+                return;
+            }
         } else {
             carrito.push({
-                id: idProducto,
-                nombre: `${codigo} - ${desc}`,
-                cantidad: cantidad,
-                precio: precio,
-                subtotal: cantidad * precio
+                id: id,
+                codigo: codigo,
+                descripcion: descripcion,
+                cantidad: 1,
+                precio: precio, // Puede ser 0
+                subtotal: precio,
+                stockMax: stockMax
             });
         }
-
-        actualizarTabla();
-        $('#producto_select').val(null).trigger('change');
-        $('#cantidad').val(1);
+        actualizarCarritoUI();
     }
 
-    function borrar(index) {
+    // --- 3. ACTUALIZAR LA VISTA DEL CARRITO (CON PRECIO EDITABLE) ---
+    function actualizarCarritoUI() {
+        let tbody = document.getElementById('tabla-carrito');
+        tbody.innerHTML = '';
+        let totalGlobal = 0;
+
+        carrito.forEach((item, index) => {
+            totalGlobal += item.subtotal;
+            
+            // Si el precio es 0, coloreamos el borde de amarillo
+            let alertaClase = item.precio === 0 ? 'border-warning bg-warning bg-opacity-10' : '';
+
+            let row = `
+                <tr>
+                    <td class="small lh-1" style="max-width: 120px;">
+                        <span class="fw-bold text-primary" style="font-size: 0.8rem;">${item.codigo}</span><br>
+                        <span class="text-muted text-truncate d-block" style="font-size: 0.75rem;">${item.descripcion}</span>
+                    </td>
+                    
+                    <td style="width: 60px;">
+                        <input type="number" min="1" max="${item.stockMax}" 
+                               class="form-control form-control-sm text-center px-1" 
+                               value="${item.cantidad}" onchange="cambiarCantidad(${index}, this.value)">
+                    </td>
+
+                    <td style="width: 85px;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text px-1 text-muted">$</span>
+                            <input type="number" step="0.01" min="0" 
+                                   class="form-control px-1 text-end fw-bold ${alertaClase}" 
+                                   value="${item.precio}" 
+                                   onchange="cambiarPrecio(${index}, this.value)"
+                                   title="Editar precio">
+                        </div>
+                    </td>
+
+                    <td class="text-end fw-bold small" style="width: 70px;">
+                        $${item.subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+
+                    <td class="text-end" style="width: 25px;">
+                        <i class="bi bi-x text-danger cursor-pointer" onclick="eliminar(${index})" style="cursor: pointer;"></i>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+
+        document.getElementById('total-texto').innerText = '$' + totalGlobal.toLocaleString('en-US', {minimumFractionDigits: 2});
+        document.getElementById('total-texto').dataset.valor = totalGlobal;
+    }
+
+    // --- 4. FUNCIONES AUXILIARES ---
+    function cambiarCantidad(index, cant) {
+        let val = parseInt(cant);
+        if (val > 0 && val <= carrito[index].stockMax) {
+            carrito[index].cantidad = val;
+            carrito[index].subtotal = val * carrito[index].precio;
+            actualizarCarritoUI();
+        } else {
+            actualizarCarritoUI(); // Revertir
+        }
+    }
+
+    function cambiarPrecio(index, precio) {
+        let val = parseFloat(precio);
+        if (val >= 0) {
+            carrito[index].precio = val;
+            carrito[index].subtotal = carrito[index].cantidad * val;
+            actualizarCarritoUI();
+        }
+    }
+
+    function eliminar(index) {
         carrito.splice(index, 1);
-        actualizarTabla();
+        actualizarCarritoUI();
     }
 
     function limpiar() {
         carrito = [];
-        actualizarTabla();
+        actualizarCarritoUI();
     }
 
-    function actualizarTabla() {
-        let tbody = $('#tabla-carrito');
-        tbody.empty();
-        let total = 0;
+    // Control de Envío
+    document.getElementById('tipo_entrega').addEventListener('change', function() {
+        let div = document.getElementById('div_direccion');
+        if(this.value === 'Paqueteria') div.classList.remove('d-none');
+        else div.classList.add('d-none');
+    });
 
-        carrito.forEach((item, index) => {
-            total += item.subtotal;
-            tbody.append(`
-                <tr>
-                    <td><small>${item.nombre}</small></td>
-                    <td>${item.cantidad}</td>
-                    <td>$${item.subtotal.toFixed(2)}</td>
-                    <td>
-                        <button onclick="borrar(${index})" class="btn btn-sm btn-outline-danger border-0">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `);
-        });
-
-        let totalFormato = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(total);
-        $('#total-texto').text(totalFormato);
-        $('#total-texto').data('valor', total);
-    }
-
-function registrarVenta() {
+    // --- 5. TERMINAR VENTA ---
+    function registrarVenta() {
         if (carrito.length === 0) {
-            Swal.fire('Carrito Vacío', 'Agrega productos.', 'warning');
+            Swal.fire('Carrito vacío', '', 'warning');
             return;
         }
 
-        let total = $('#total-texto').data('valor');
+        let total = parseFloat(document.getElementById('total-texto').dataset.valor);
         let datos = {
-            cliente_id: $('#cliente').val(),
-            tipo_entrega: $('#tipo_entrega').val(),
-            direccion_envio: $('#direccion_envio').val(),
+            cliente_id: document.getElementById('cliente').value,
+            tipo_entrega: document.getElementById('tipo_entrega').value,
+            direccion_envio: document.getElementById('direccion_envio').value,
+            metodo_pago: document.getElementById('metodo_pago').value, // <--- ENVIAMOS MÉTODO
             total: total,
             productos: carrito
         };
 
-        Swal.fire({
-            title: '¿Confirmar Venta?',
-            text: `Total a cobrar: $${total.toFixed(2)}`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#198754',
-            confirmButtonText: 'Sí, Registrar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Mostrar cargando...
-                Swal.showLoading();
+        // Confirmación si el total es 0
+        if (total === 0) {
+            Swal.fire('¿Cobrar $0.00?', 'Verifica los precios antes de continuar', 'question').then((r) => {
+                if(r.isConfirmed) enviarDatos(datos);
+            });
+        } else {
+            enviarDatos(datos);
+        }
+    }
 
-                $.ajax({
-                    url: '/nueva-venta',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(datos),
-                    success: function(response) {
-                        let ventaId = response.venta_id;
-                        
-                        // AQUÍ ESTÁ EL CAMBIO: Preguntamos qué hacer DESPUÉS de guardar
-                        Swal.fire({
-                            title: '¡Venta Guardada!',
-                            text: '¿Deseas imprimir la nota de remisión?',
-                            icon: 'success',
-                            showCancelButton: true,
-                            confirmButtonColor: '#0d6efd', // Azul
-                            cancelButtonColor: '#6c757d', // Gris
-                            confirmButtonText: '🖨️ Imprimir Nota',
-                            cancelButtonText: 'Nueva Venta'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                // Abrimos la nota
-                                window.open("/nota_remision/" + ventaId, "_blank");
-                                window.location.reload(); // Limpiamos pantalla
-                            } else {
-                                window.location.reload(); // Solo limpiamos
-                            }
-                        });
-                    },
-                    error: function() {
-                        Swal.fire('Error', 'No se pudo guardar la venta', 'error');
-                    }
+    function enviarDatos(datos) {
+        Swal.showLoading();
+        fetch('/nueva-venta', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(datos)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    title: '¡Venta Registrada!',
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonText: '🖨️ Imprimir Nota',
+                    cancelButtonText: 'Nueva Venta'
+                }).then((res) => {
+                    if (res.isConfirmed) window.open("/nota_remision/" + data.venta_id, "_blank");
+                    window.location.reload();
                 });
+            } else {
+                Swal.fire('Error', 'Algo salió mal', 'error');
             }
         });
     }

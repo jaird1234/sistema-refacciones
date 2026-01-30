@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Ventas{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <h2 class="mb-4"><i class="bi bi-clock-history"></i> Historial de Ventas</h2>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Folio</th>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Método Pago</th> <th>Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in ventas %}
+                        <tr>
+                            <td class="fw-bold">#{{ v.id }}</td>
+                            <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ v.cliente_rel.nombre if v.cliente_rel else 'Público General' }}</td>
+                            
+                            <td>
+                                {% if v.metodo_pago == 'Tarjeta' %}
+                                    <span class="badge bg-primary"><i class="bi bi-credit-card"></i> Tarjeta</span>
+                                {% elif v.metodo_pago == 'Transferencia' %}
+                                    <span class="badge bg-info text-dark"><i class="bi bi-bank"></i> Transf.</span>
+                                {% else %}
+                                    <span class="badge bg-success"><i class="bi bi-cash"></i> Efectivo</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="fw-bold text-success fs-5">${{ "{:,.2f}".format(v.total) }}</td>
+                            
+                            <td>
+                                <a href="{{ url_for('detalle_venta', id=v.id) }}" class="btn btn-sm btn-outline-info" title="Ver Productos">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+
+                                {% if current_user.username == 'admin' %}
+                                <button class="btn btn-sm btn-outline-warning" 
+                                        onclick="abrirModalEditar({{ v.id }}, '{{ v.metodo_pago }}', {{ v.total }})"
+                                        title="Editar Venta">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarVenta" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square"></i> Editar Venta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editVentaId">
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Método de Pago:</label>
+                    <select id="editMetodo" class="form-select">
+                        <option value="Efectivo">💵 Efectivo</option>
+                        <option value="Tarjeta">💳 Tarjeta / Débito</option>
+                        <option value="Transferencia">🏦 Transferencia</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Total ($):</label>
+                    <input type="number" step="0.01" id="editTotal" class="form-control">
+                    <small class="text-muted">Corrige el precio final si hubo un error.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarCambiosVenta()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // 1. Abrir el Modal y rellenar datos actuales
+    function abrirModalEditar(id, metodoActual, totalActual) {
+        document.getElementById('editVentaId').value = id;
+        document.getElementById('editMetodo').value = metodoActual;
+        document.getElementById('editTotal').value = totalActual;
+        
+        // Mostrar Modal de Bootstrap
+        var myModal = new bootstrap.Modal(document.getElementById('modalEditarVenta'));
+        myModal.show();
+    }
+
+    // 2. Enviar cambios al servidor
+    function guardarCambiosVenta() {
+        let id = document.getElementById('editVentaId').value;
+        let metodo = document.getElementById('editMetodo').value;
+        let total = document.getElementById('editTotal').value;
+
+        fetch('/actualizar_venta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                venta_id: id,
+                nuevo_metodo: metodo,
+                nuevo_total: total
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('¡Actualizado!', 'La venta ha sido corregida.', 'success')
+                .then(() => {
+                    location.reload(); // Recargar página
+                });
+            } else {
+                Swal.fire('Error', data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            Swal.fire('Error', 'No se pudo conectar', 'error');
+        });
+    }
+</script>
+{% endblock %}

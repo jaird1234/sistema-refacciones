@@ -66,6 +66,8 @@ class Venta(db.Model):
     tipo_entrega = db.Column(db.String)
     direccion_envio = db.Column(db.String)
     cliente = db.relationship('Cliente')
+    metodo_pago = db.Column(db.String(50), default='Efectivo')
+
     
     # --- ESTA LÍNEA ES LA MAGIA QUE PERMITE BORRAR ---
     detalles = db.relationship('DetalleVenta', backref='venta', cascade="all, delete-orphan")
@@ -255,18 +257,22 @@ def nueva_venta():
     if request.method == 'POST':
         data = request.json
         
-        # Obtenemos dirección: Si es paquetería usamos la del form, si no, vacía o la del cliente
+        # Obtenemos dirección
         direccion = data.get('direccion_envio', '')
         
+        # CREAMOS LA VENTA CON EL MÉTODO DE PAGO
         nueva_venta = Venta(
             cliente_id=data['cliente_id'], 
             total=data['total'],
             tipo_entrega=data['tipo_entrega'],
-            direccion_envio=direccion
+            direccion_envio=direccion,
+            metodo_pago=data.get('metodo_pago', 'Efectivo') # <--- AQUÍ ESTÁ EL CAMBIO
         )
-        db.session.add(nueva_venta)
-        db.session.flush()
         
+        db.session.add(nueva_venta)
+        db.session.flush() # Genera el ID
+        
+        # GUARDAMOS LOS PRODUCTOS
         for item in data['productos']:
             detalle = DetalleVenta(
                 venta_id=nueva_venta.id,
@@ -275,16 +281,22 @@ def nueva_venta():
                 precio_unitario=item['precio']
             )
             db.session.add(detalle)
+            
+            # Restar del inventario
             prod = Producto.query.get(item['id'])
-            prod.cantidad_actual -= int(item['cantidad'])
+            if prod:
+                prod.cantidad_actual -= int(item['cantidad'])
             
         db.session.commit()
         return jsonify({'status': 'success', 'venta_id': nueva_venta.id})
 
-    clientes = Cliente.query.all()
-    productos = Producto.query.filter(Producto.cantidad_actual > 0).all()
+    # CARGA DE DATOS PARA LA PÁGINA
+    clientes = Cliente.query.order_by(Cliente.nombre).all()
+    # Traemos solo productos con stock (opcional) o todos
+    productos = Producto.query.order_by(Producto.descripcion).all()
+    
     return render_template('nueva_venta.html', clientes=clientes, productos=productos)
-
+        
 @app.route('/historial-ventas')
 @login_required
 def historial_ventas():
@@ -453,6 +465,54 @@ def eliminar_producto(id):
     db.session.commit()
     flash('Producto eliminado correctamente', 'success')
     return redirect(url_for('inventario'))
+
+# --- RUTA PARA PROCESAR LA VENTA ---
+@app.route('/realizar_venta', methods=['POST'])
+@login_required
+def realizar_venta():
+    data = request.json # Recibimos los datos del carrito desde JavaScript
+    
+    try:
+        # 1. Crear la Venta Principal
+        nueva_venta = Venta(
+            total=data['total'],
+            usuario_id=current_user.id,
+            cliente_id=data.get('cliente_id'), # Puede ser None si es público general
+            metodo_pago=data.get('metodo_pago', 'Efectivo') # <--- AQUÍ GUARDAMOS EL MÉTODO
+        )
+        db.session.add(nueva_venta)
+        db.session.flush() # Esto genera el ID de la venta sin guardar definitivamente aún
+
+        # 2. Procesar cada producto del carrito
+        for item in data['carrito']:
+            producto = Producto.query.get(item['id'])
+            
+            if producto:
+                # Verificamos stock una última vez
+                if producto.cantidad_actual < item['cantidad']:
+                    db.session.rollback()
+                    return jsonify({'success': False, 'error': f'Stock insuficiente para {producto.codigo}'}), 400
+
+                # Restamos del Inventario
+                producto.cantidad_actual -= item['cantidad']
+                
+                # Guardamos el detalle
+                detalle = DetalleVenta(
+                    venta_id=nueva_venta.id,
+                    producto_id=producto.id,
+                    cantidad=item['cantidad'],
+                    precio_unitario=item['precio']
+                )
+                db.session.add(detalle)
+
+        # 3. Confirmar todo en la Base de Datos
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Venta guardada correctamente', 'folio': nueva_venta.id})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Agrega esto en tu app.py junto a las otras rutas
 @app.route('/etiquetas')
 @login_required
@@ -460,6 +520,34 @@ def etiquetas():
     # Traemos todos los clientes para el buscador
     clientes = Cliente.query.all() 
     return render_template('etiquetas.html', clientes=clientes)
+
+# --- RUTA PARA MODIFICAR UNA VENTA EXISTENTE ---
+@app.route('/actualizar_venta', methods=['POST'])
+@login_required
+def actualizar_venta():
+    if current_user.username != 'admin':
+        return jsonify({'success': False, 'error': 'Solo admin puede editar ventas'}), 403
+
+    data = request.json
+    venta_id = data.get('venta_id')
+    nuevo_metodo = data.get('nuevo_metodo')
+    nuevo_total = data.get('nuevo_total')
+
+    try:
+        venta = Venta.query.get(venta_id)
+        if not venta:
+            return jsonify({'success': False, 'error': 'Venta no encontrada'}), 404
+
+        # Actualizamos los datos
+        venta.metodo_pago = nuevo_metodo
+        venta.total = float(nuevo_total)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Venta actualizada'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 
